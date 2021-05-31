@@ -72,6 +72,10 @@ class JournalChannel implements Closeable {
     // Adding explicitlac entry
     public static final int V6 = 6;
 
+    public static enum FileChannelType {
+        FILE, PMEM
+    }
+
     static final int HEADER_SIZE = SECTOR_SIZE; // align header to sector size
     static final int VERSION_HEADER_SIZE = 8; // 4byte magic word, 4 byte version
     static final int MIN_COMPAT_JOURNAL_FORMAT_VERSION = V1;
@@ -81,7 +85,7 @@ class JournalChannel implements Closeable {
     private final int journalAlignSize;
     private final boolean fRemoveFromPageCache;
     public final ByteBuffer zeros;
-
+    private FileChannelType fileChannelType;
     // The position of the file channel's last drop position
     private long lastDropPosition = 0L;
 
@@ -98,8 +102,8 @@ class JournalChannel implements Closeable {
     // Open journal for scanning starting from given position.
     JournalChannel(File journalDirectory, long logId,
                    long preAllocSize, int writeBufferSize, long position) throws IOException {
-         this(journalDirectory, logId, preAllocSize, writeBufferSize, SECTOR_SIZE,
-                 position, false, V5, Journal.BufferedChannelBuilder.DEFAULT_BCBUILDER);
+        this(journalDirectory, logId, preAllocSize, writeBufferSize, SECTOR_SIZE,
+                position, false, V5, Journal.BufferedChannelBuilder.DEFAULT_BCBUILDER, FileChannelType.FILE);
     }
 
     // Open journal to write
@@ -115,7 +119,7 @@ class JournalChannel implements Closeable {
                    boolean fRemoveFromPageCache, int formatVersionToWrite,
                    Journal.BufferedChannelBuilder bcBuilder) throws IOException {
         this(journalDirectory, logId, preAllocSize, writeBufferSize, journalAlignSize,
-                START_OF_FILE, fRemoveFromPageCache, formatVersionToWrite, bcBuilder);
+                START_OF_FILE, fRemoveFromPageCache, formatVersionToWrite, bcBuilder, FileChannelType.FILE);
     }
 
     /**
@@ -143,11 +147,15 @@ class JournalChannel implements Closeable {
     private JournalChannel(File journalDirectory, long logId,
                            long preAllocSize, int writeBufferSize, int journalAlignSize,
                            long position, boolean fRemoveFromPageCache,
-                           int formatVersionToWrite, Journal.BufferedChannelBuilder bcBuilder) throws IOException {
+                           int formatVersionToWrite, Journal.BufferedChannelBuilder bcBuilder,
+                           FileChannelType fileChannelType) throws IOException {
         this.journalAlignSize = journalAlignSize;
         this.zeros = ByteBuffer.allocate(journalAlignSize);
         this.preAllocSize = preAllocSize - preAllocSize % journalAlignSize;
         this.fRemoveFromPageCache = fRemoveFromPageCache;
+        //TODO: add file channel type to global config
+        this.fileChannelType = fileChannelType;
+
         File fn = new File(journalDirectory, Long.toHexString(logId) + ".txn");
 
         if (formatVersionToWrite < V4) {
@@ -155,7 +163,7 @@ class JournalChannel implements Closeable {
         }
 
         LOG.info("Opening journal {}", fn);
-        if (!fn.exists()) { // new file, write version
+        if (!fileExists(fn)) { // new file, write version
             if (!fn.createNewFile()) {
                 LOG.error("Journal file {}, that shouldn't exist, already exists. "
                           + " is there another bookie process running?", fn);
@@ -163,7 +171,15 @@ class JournalChannel implements Closeable {
                         + " suddenly appeared, is another bookie process running?");
             }
             randomAccessFile = new RandomAccessFile(fn, "rw");
-            fc = openFileChannel(randomAccessFile);
+            if (this.fileChannelType == FileChannelType.FILE) {
+                fc = openFileChannel(randomAccessFile);
+            } else {
+                //TODO: add PMem file size to config
+                long initFileSize = 10L * 1024 * 1024;
+                fc = PMemChannel.open(fn.toPath(), initFileSize, false);
+            }
+
+
             formatVersion = formatVersionToWrite;
 
             int headerSize = (V4 == formatVersion) ? VERSION_HEADER_SIZE : HEADER_SIZE;
@@ -181,7 +197,13 @@ class JournalChannel implements Closeable {
             fc.write(zeros, nextPrealloc - journalAlignSize);
         } else {  // open an existing file
             randomAccessFile = new RandomAccessFile(fn, "r");
-            fc = openFileChannel(randomAccessFile);
+            if (this.fileChannelType == FileChannelType.FILE) {
+                fc = openFileChannel(randomAccessFile);
+            } else {
+                //TODO: add PMem file size to config
+                long initFileSize = 10L * 1024 * 1024;
+                fc = PMemChannel.open(fn.toPath(), initFileSize, false);
+            }
             bc = null; // readonly
 
             ByteBuffer bb = ByteBuffer.allocate(VERSION_HEADER_SIZE);
@@ -292,6 +314,14 @@ class JournalChannel implements Closeable {
                 NativeIO.bestEffortRemoveFromPageCache(fd, lastDropPosition, newDropPos - lastDropPosition);
             }
             this.lastDropPosition = newDropPos;
+        }
+    }
+
+    private boolean fileExists(File fn) {
+        if (this.fileChannelType == FileChannelType.FILE) {
+            return fn.exists();
+        } else {
+            return PMemChannel.fileExistsInHeap(fn);
         }
     }
 

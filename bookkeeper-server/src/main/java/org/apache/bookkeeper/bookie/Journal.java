@@ -619,6 +619,8 @@ public class Journal extends BookieCriticalThread implements CheckpointSource {
     private static final String LAST_MARK_DEFAULT_NAME = "lastMark";
 
     private final String lastMarkFileName;
+    // journal storage device
+    private final JournalChannel.FileChannelType journalStorageDevice;
 
     /**
      * The thread pool used to handle callback.
@@ -675,6 +677,8 @@ public class Journal extends BookieCriticalThread implements CheckpointSource {
         this.journalFormatVersionToWrite = conf.getJournalFormatVersionToWrite();
         this.journalAlignmentSize = conf.getJournalAlignmentSize();
         this.journalPageCacheFlushIntervalMSec = conf.getJournalPageCacheFlushIntervalMSec();
+        this.journalStorageDevice = conf.getJournalStorageDevice() == "PMEM"? JournalChannel.FileChannelType.PMEM: JournalChannel.FileChannelType.FILE;
+
         if (conf.getNumJournalCallbackThreads() > 0) {
             this.cbThreadPool = Executors.newFixedThreadPool(conf.getNumJournalCallbackThreads(),
                                                          new DefaultThreadFactory("bookie-journal-callback"));

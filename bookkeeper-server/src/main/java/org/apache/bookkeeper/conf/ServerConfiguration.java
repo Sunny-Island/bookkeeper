@@ -146,6 +146,7 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
     protected static final String JOURNAL_QUEUE_SIZE = "journalQueueSize";
     protected static final String JOURNAL_MAX_MEMORY_SIZE_MB = "journalMaxMemorySizeMb";
     protected static final String JOURNAL_PAGECACHE_FLUSH_INTERVAL_MSEC = "journalPageCacheFlushIntervalMSec";
+    protected static final String JOURNAL_STORAGE_DEVICE = "JournalStorageDevice";
     // backpressure control
     protected static final String MAX_ADDS_IN_PROGRESS_LIMIT = "maxAddsInProgressLimit";
     protected static final String MAX_READS_IN_PROGRESS_LIMIT = "maxReadsInProgressLimit";
@@ -866,6 +867,25 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
      */
     public long getJournalPageCacheFlushIntervalMSec() {
         return this.getLong(JOURNAL_PAGECACHE_FLUSH_INTERVAL_MSEC, 1000);
+    }
+
+    /**
+     * Set Journal storege device: PMEM or FILE
+     *
+     * @return Max number of reads in progress
+     */
+    public ServerConfiguration setJournalStorageDevice(String journalStorageDevice) {
+        this.setProperty(JOURNAL_STORAGE_DEVICE, journalStorageDevice);
+        return this;
+    }
+
+    /**
+     * Get journal storage device type
+     *
+     * @return
+     */
+    public String getJournalStorageDevice() {
+        return this.getString(JOURNAL_STORAGE_DEVICE, "FILE");
     }
 
     /**
