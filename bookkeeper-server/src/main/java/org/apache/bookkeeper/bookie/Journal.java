@@ -677,7 +677,8 @@ public class Journal extends BookieCriticalThread implements CheckpointSource {
         this.journalFormatVersionToWrite = conf.getJournalFormatVersionToWrite();
         this.journalAlignmentSize = conf.getJournalAlignmentSize();
         this.journalPageCacheFlushIntervalMSec = conf.getJournalPageCacheFlushIntervalMSec();
-        this.journalStorageDevice = conf.getJournalStorageDevice() == "PMEM"? JournalChannel.FileChannelType.PMEM: JournalChannel.FileChannelType.FILE;
+        this.journalStorageDevice = conf.getJournalStorageDevice() == "PMEM"
+            ? JournalChannel.FileChannelType.PMEM : JournalChannel.FileChannelType.FILE;
 
         if (conf.getNumJournalCallbackThreads() > 0) {
             this.cbThreadPool = Executors.newFixedThreadPool(conf.getNumJournalCallbackThreads(),
@@ -965,7 +966,7 @@ public class Journal extends BookieCriticalThread implements CheckpointSource {
                     journalCreationWatcher.reset().start();
                     logFile = new JournalChannel(journalDirectory, logId, journalPreAllocSize, journalWriteBufferSize,
                                         journalAlignmentSize, removePagesFromCache,
-                                        journalFormatVersionToWrite, getBufferedChannelBuilder(),journalStorageDevice);
+                                        journalFormatVersionToWrite, getBufferedChannelBuilder(), journalStorageDevice);
 
                     journalStats.getJournalCreationStats().registerSuccessfulEvent(
                             journalCreationWatcher.stop().elapsed(TimeUnit.NANOSECONDS), TimeUnit.NANOSECONDS);

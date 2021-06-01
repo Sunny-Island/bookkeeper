@@ -870,7 +870,7 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
     }
 
     /**
-     * Set Journal storege device: PMEM or FILE
+     * Set Journal storege device: PMEM or FILE.
      *
      * @return Max number of reads in progress
      */
@@ -880,7 +880,7 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
     }
 
     /**
-     * Get journal storage device type
+     * Get journal storage device type.
      *
      * @return
      */

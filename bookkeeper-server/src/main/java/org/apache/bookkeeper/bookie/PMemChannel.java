@@ -23,17 +23,16 @@ package org.apache.bookkeeper.bookie;
 
 import static java.lang.Math.min;
 
-import lib.util.persistent.ObjectDirectory;
-import lib.util.persistent.PersistentInteger;
-import lib.util.persistent.PersistentLong;
-import lib.util.persistent.PersistentString;
-
 import com.intel.pmem.llpl.AnyHeap;
 import com.intel.pmem.llpl.HeapException;
 import com.intel.pmem.llpl.PersistentHeap;
 import com.intel.pmem.llpl.PersistentMemoryBlock;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -44,6 +43,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import lib.util.persistent.ObjectDirectory;
+import lib.util.persistent.PersistentInteger;
+import lib.util.persistent.PersistentLong;
+import lib.util.persistent.PersistentString;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,15 +72,19 @@ class Pool<T> {
     private LinkedList<T> items = new LinkedList<>();
 }
 
+
+/**
+ * PMemChannel for journal storage.
+ */
 public class PMemChannel extends FileChannel {
     private static final Logger log = LoggerFactory.getLogger(PMemChannel.class);
     private static int poolAllocatedSize = 0;
     private static int poolSize = 0;
     private static PersistentHeap heap;
-    private volatile static boolean inited = false;
+    private static volatile boolean inited = false;
     private static Pool<PersistentMemoryBlock> blockPool = new Pool<>();
     private static AtomicInteger counter = new AtomicInteger();
-    private final static Object GLOBAL_LOCK = new Object();
+    private static final Object GLOBAL_LOCK = new Object();
 
     private PersistentMemoryBlock pBlock;
     private long channelSize;
@@ -100,8 +108,10 @@ public class PMemChannel extends FileChannel {
         }
 
         try {
-            BufferedWriter metaConfig = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("config.properties"), StandardCharsets.UTF_8));
-            long metaPoolSize = (poolSize + 100) * 1024L * 1024;  // entry number will be #poolBlock + #dynamicBlock (we assume its max is 100)
+            BufferedWriter metaConfig = new BufferedWriter
+                (new OutputStreamWriter(new FileOutputStream("config.properties"), StandardCharsets.UTF_8));
+            // entry number will be #poolBlock + #dynamicBlock (we assume its max is 100)
+            long metaPoolSize = (poolSize + 100) * 1024L * 1024;
             String metaConfigContent = "path=" + metaPath + "\n" + "size=" + metaPoolSize + "\n";
             metaConfig.write(metaConfigContent);
             metaConfig.flush();
@@ -120,7 +130,8 @@ public class PMemChannel extends FileChannel {
              * poolSize: number of pBlock can used in current blockpool
              */
             int poolSize = (int) (size * poolRatio / allocatedSize);
-            log.info("Init heap: size = " + size + ", poolSize = " + poolSize + " (" + (poolRatio * 100) + "% of total size)" + ", poolEntry size = " + allocatedSize);
+            log.info("Init heap: size = " + size + ", poolSize = " + poolSize
+                + " (" + (poolRatio * 100) + "% of total size)" + ", poolEntry size = " + allocatedSize);
             ObjectDirectory.put("_heap_path", new PersistentString(heapPath));
             ObjectDirectory.put("_pool_allocated_size", new PersistentInteger(allocatedSize));
             ObjectDirectory.put("_pool_size", new PersistentInteger(poolSize));
@@ -144,6 +155,14 @@ public class PMemChannel extends FileChannel {
         }
     }
 
+    /**
+     *
+     * @param file
+     * @param initFileSize
+     * @param preallocate
+     * @return
+     * @throws IOException
+     */
     public static FileChannel open(Path file, long initFileSize, boolean preallocate) throws IOException {
         synchronized (GLOBAL_LOCK) {
             log.info("open PMemChannel " + file.toString());
@@ -151,7 +170,8 @@ public class PMemChannel extends FileChannel {
             if (!inited) {
                 inited = true;
                 heap = PersistentHeap.openHeap(ObjectDirectory.get("_heap_path", PersistentString.class).toString());
-                PersistentInteger poolAllocatedSizeP = ObjectDirectory.get("_pool_allocated_size", PersistentInteger.class);
+                PersistentInteger poolAllocatedSizeP =
+                    ObjectDirectory.get("_pool_allocated_size", PersistentInteger.class);
                 if (poolAllocatedSizeP != null) {
                     poolAllocatedSize = poolAllocatedSizeP.intValue();
                 } else {
@@ -199,7 +219,8 @@ public class PMemChannel extends FileChannel {
             long handle = handleP.longValue();
             pBlock = heap.memoryBlockFromHandle(handle);
             if (initSize != 0) {
-                log.error("initSize not 0 for recovered channel. initSize = " + initSize + ", buf.size = " + pBlock.size());
+                log.error("initSize not 0 for recovered channel. initSize = "
+                    + initSize + ", buf.size = " + pBlock.size());
             }
 
             if (initSize != 0) {
@@ -221,7 +242,7 @@ public class PMemChannel extends FileChannel {
                 log.error("PMemChannel initSize 0 (have to set log.preallocate=true)");
             }
 
-            // TODO(zhanghao): what if initSize is 0
+            // TODO: what if initSize is 0
             if (poolSize == 0 || initSize != poolAllocatedSize || counter.get() >= poolSize) {
                 try {
                     pBlock = heap.allocateMemoryBlock(initSize);
@@ -240,7 +261,8 @@ public class PMemChannel extends FileChannel {
                     ObjectDirectory.put("_pool_used", new PersistentInteger(usedCounter));
                     pBlock = blockPool.pop();
                     if (pBlock == null) {
-                        String msg = "block pool inconsistent, usedCounter = " + usedCounter + "， poolSize = " + poolAllocatedSize;
+                        String msg = "block pool inconsistent, usedCounter = "
+                            + usedCounter + "， poolSize = " + poolAllocatedSize;
                         log.error(msg);
                         throw new IOException(msg);
                     }
@@ -292,7 +314,8 @@ public class PMemChannel extends FileChannel {
             }
         }
 
-        log.debug("write " + writeSize + " to buf from position " + channelPosition + ", size = " + size() + ", src.limit() = "
+        log.debug("write " + writeSize + " to buf from position "
+            + channelPosition + ", size = " + size() + ", src.limit() = "
                 + src.limit() + ", src.position = " + src.position() + ", src.capacity() = " + src.capacity()
                 + ", src.arrayOffset() = " + src.arrayOffset());
         pBlock.copyFromArray(src.array(), src.arrayOffset() + src.position(), channelPosition, writeSize);
@@ -372,7 +395,8 @@ public class PMemChannel extends FileChannel {
 
     @Override
     public int read(ByteBuffer dst, long position) throws IOException {
-        log.debug("dst.remaining() = " + dst.remaining() + ", size = " + channelSize + ", position = " + position + ", curPos = " + this.channelPosition);
+        log.debug("dst.remaining() = " + dst.remaining() + ", size = " + channelSize
+            + ", position = " + position + ", curPos = " + this.channelPosition);
         int readSize = min((int) channelSize - (int) position, dst.remaining());
         if (readSize <= 0) {
             return -1;
@@ -418,7 +442,8 @@ public class PMemChannel extends FileChannel {
 
     public void delete() {
         synchronized (GLOBAL_LOCK) {
-            log.info("Before delete PMemChannel, channelSize = " + pBlock.size() + ", poolSize = " + blockPool.size() + ", usedCounter = " + counter.get());
+            log.info("Before delete PMemChannel, channelSize = " + pBlock.size() + ", poolSize = "
+                + blockPool.size() + ", usedCounter = " + counter.get());
             if (pBlock.size() == poolAllocatedSize) {
                 // clear the pmem metadata
                 ObjectDirectory.remove(filePath.toString(), PersistentLong.class);
@@ -433,12 +458,14 @@ public class PMemChannel extends FileChannel {
                 ObjectDirectory.put("_pool_used", new PersistentInteger(usedCounter));
 
                 if (poolSize - usedCounter != blockPool.size()) {
-                    log.error("pool free size (" + blockPool.size() + ") != poolSize - usedCounter (" + (poolSize - usedCounter) + ")");
+                    log.error("pool free size (" + blockPool.size() + ") != poolSize - usedCounter ("
+                        + (poolSize - usedCounter) + ")");
                 }
             } else {
                 pBlock.freeMemory();
             }
-            log.info("After delete PMemChannel, channelSize = " + pBlock.size() + ", poolSize = " + blockPool.size() + ", usedCounter = " + counter.get());
+            log.info("After delete PMemChannel, channelSize = "
+                + pBlock.size() + ", poolSize = " + blockPool.size() + ", usedCounter = " + counter.get());
             pBlock = null;
         }
     }

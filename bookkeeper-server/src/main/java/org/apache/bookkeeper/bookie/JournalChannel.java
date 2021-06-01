@@ -72,7 +72,7 @@ class JournalChannel implements Closeable {
     // Adding explicitlac entry
     public static final int V6 = 6;
 
-    public static enum FileChannelType {
+    public enum FileChannelType {
         FILE, PMEM
     }
 
@@ -95,13 +95,15 @@ class JournalChannel implements Closeable {
     }
 
     // Open journal for scanning starting from the first record in journal.
-    JournalChannel(File journalDirectory, long logId, long preAllocSize, int writeBufferSize, FileChannelType fileChannelType) throws IOException {
+    JournalChannel(File journalDirectory, long logId,
+                   long preAllocSize, int writeBufferSize, FileChannelType fileChannelType) throws IOException {
         this(journalDirectory, logId, preAllocSize, writeBufferSize, START_OF_FILE, fileChannelType);
     }
 
     // Open journal for scanning starting from given position.
     JournalChannel(File journalDirectory, long logId,
-                   long preAllocSize, int writeBufferSize, long position, FileChannelType fileChannelType) throws IOException {
+                   long preAllocSize, int writeBufferSize,
+                   long position, FileChannelType fileChannelType) throws IOException {
         this(journalDirectory, logId, preAllocSize, writeBufferSize, SECTOR_SIZE,
                 position, false, V5, Journal.BufferedChannelBuilder.DEFAULT_BCBUILDER, fileChannelType);
     }
