@@ -26,6 +26,20 @@
   <name>Apache BookKeeper :: Server</name>
   <dependencies>
     <dependency>
+      <groupId>lib.util.persistent</groupId>
+      <artifactId>persistent</artifactId>
+      <version>1.0</version>
+      <scope>system</scope>
+      <systemPath>${basedir}/libs/pcj.jar</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>com.intel.pmem.llpl</groupId>
+      <artifactId>llpl</artifactId>
+      <version>1.0</version>
+      <scope>system</scope>
+      <systemPath>${basedir}/libs/llpl.jar</systemPath>
+    </dependency>
+    <dependency>
       <groupId>org.apache.bookkeeper</groupId>
       <artifactId>bookkeeper-common</artifactId>
       <version>${project.parent.version}</version>

@@ -91,19 +91,19 @@ class JournalChannel implements Closeable {
 
     // Mostly used by tests
     JournalChannel(File journalDirectory, long logId) throws IOException {
-        this(journalDirectory, logId, 4 * 1024 * 1024, 65536, START_OF_FILE);
+        this(journalDirectory, logId, 4 * 1024 * 1024, 65536, START_OF_FILE, FileChannelType.FILE);
     }
 
     // Open journal for scanning starting from the first record in journal.
-    JournalChannel(File journalDirectory, long logId, long preAllocSize, int writeBufferSize) throws IOException {
-        this(journalDirectory, logId, preAllocSize, writeBufferSize, START_OF_FILE);
+    JournalChannel(File journalDirectory, long logId, long preAllocSize, int writeBufferSize, FileChannelType fileChannelType) throws IOException {
+        this(journalDirectory, logId, preAllocSize, writeBufferSize, START_OF_FILE, fileChannelType);
     }
 
     // Open journal for scanning starting from given position.
     JournalChannel(File journalDirectory, long logId,
-                   long preAllocSize, int writeBufferSize, long position) throws IOException {
+                   long preAllocSize, int writeBufferSize, long position, FileChannelType fileChannelType) throws IOException {
         this(journalDirectory, logId, preAllocSize, writeBufferSize, SECTOR_SIZE,
-                position, false, V5, Journal.BufferedChannelBuilder.DEFAULT_BCBUILDER, FileChannelType.FILE);
+                position, false, V5, Journal.BufferedChannelBuilder.DEFAULT_BCBUILDER, fileChannelType);
     }
 
     // Open journal to write
@@ -120,6 +120,13 @@ class JournalChannel implements Closeable {
                    Journal.BufferedChannelBuilder bcBuilder) throws IOException {
         this(journalDirectory, logId, preAllocSize, writeBufferSize, journalAlignSize,
                 START_OF_FILE, fRemoveFromPageCache, formatVersionToWrite, bcBuilder, FileChannelType.FILE);
+    }
+    JournalChannel(File journalDirectory, long logId,
+                   long preAllocSize, int writeBufferSize, int journalAlignSize,
+                   boolean fRemoveFromPageCache, int formatVersionToWrite,
+                   Journal.BufferedChannelBuilder bcBuilder, FileChannelType fileChannelType) throws IOException {
+        this(journalDirectory, logId, preAllocSize, writeBufferSize, journalAlignSize,
+            START_OF_FILE, fRemoveFromPageCache, formatVersionToWrite, bcBuilder, fileChannelType);
     }
 
     /**
