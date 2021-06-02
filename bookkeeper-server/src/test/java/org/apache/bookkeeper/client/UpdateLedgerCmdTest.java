@@ -21,7 +21,6 @@
 package org.apache.bookkeeper.client;
 
 import static org.junit.Assert.assertEquals;
-
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -29,8 +28,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.bookkeeper.bookie.Bookie;
+import org.apache.bookkeeper.bookie.BookieImpl;
 import org.apache.bookkeeper.bookie.BookieShell;
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
@@ -73,12 +71,11 @@ public class UpdateLedgerCmdTest extends BookKeeperClusterTestCase {
         }
 
         String[] argv = new String[] { "updateledgers", "-b", "hostname", "-v", "true", "-p", "2" };
-        final ServerConfiguration conf = bsConfs.get(0);
+        final ServerConfiguration conf = confByIndex(0);
         conf.setUseHostNameAsBookieID(true);
-        BookieSocketAddress toBookieId = Bookie.getBookieAddress(conf);
+        BookieSocketAddress toBookieId = BookieImpl.getBookieAddress(conf);
         BookieId toBookieAddr = new BookieSocketAddress(toBookieId.getHostName() + ":"
                 + conf.getBookiePort()).toBookieId();
-
         updateLedgerCmd(argv, 0, conf);
 
         int updatedLedgersCount = getUpdatedLedgersCount(bk, ledgers, toBookieAddr);
@@ -98,12 +95,12 @@ public class UpdateLedgerCmdTest extends BookKeeperClusterTestCase {
         for (int i = 1; i < 40; i++) {
             ledgers.add(createLedgerWithEntries(bk, 0));
         }
-        BookieId srcBookie = bs.get(0).getBookieId();
+        BookieId srcBookie = getBookie(0);
         BookieId destBookie = new BookieSocketAddress("1.1.1.1", 2181).toBookieId();
         String[] argv = new String[] { "updateBookieInLedger", "-sb", srcBookie.toString(), "-db",
                 destBookie.toString(), "-v", "true", "-p", "2" };
-        final ServerConfiguration conf = bsConfs.get(0);
-        bs.get(0).shutdown();
+        final ServerConfiguration conf = confByIndex(0);
+        serverByIndex(0).shutdown();
         updateLedgerCmd(argv, 0, conf);
         int updatedLedgersCount = getUpdatedLedgersCount(bk, ledgers, srcBookie);
         assertEquals("Failed to update the ledger metadata with new bookie-address", 0, updatedLedgersCount);

@@ -24,7 +24,6 @@ import static org.apache.bookkeeper.client.RackawareEnsemblePlacementPolicyImpl.
 import static org.apache.bookkeeper.replication.ReplicationStats.AUDITOR_SCOPE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -33,8 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-
-import org.apache.bookkeeper.bookie.Bookie;
+import org.apache.bookkeeper.bookie.BookieImpl;
 import org.apache.bookkeeper.client.LedgerMetadataBuilder;
 import org.apache.bookkeeper.client.RackawareEnsemblePlacementPolicy;
 import org.apache.bookkeeper.client.ZoneawareEnsemblePlacementPolicy;
@@ -84,8 +82,8 @@ public class AuditorPlacementPolicyCheckTest extends BookKeeperClusterTestCase {
     public void setUp() throws Exception {
         super.setUp();
         StaticDNSResolver.reset();
-        driver = MetadataDrivers.getBookieDriver(URI.create(bsConfs.get(0).getMetadataServiceUri()));
-        driver.initialize(bsConfs.get(0), () -> {
+        driver = MetadataDrivers.getBookieDriver(URI.create(confByIndex(0).getMetadataServiceUri()));
+        driver.initialize(confByIndex(0), () -> {
         }, NullStatsLogger.INSTANCE);
     }
 
@@ -183,7 +181,7 @@ public class AuditorPlacementPolicyCheckTest extends BookKeeperClusterTestCase {
                 .build();
         lm.createLedgerMetadata(4L, initMeta).get();
 
-        ServerConfiguration servConf = new ServerConfiguration(bsConfs.get(0));
+        ServerConfiguration servConf = new ServerConfiguration(confByIndex(0));
         servConf.setMinNumRacksPerWriteQuorum(minNumRacksPerWriteQuorumConfValue);
         setServerConfigPropertiesForRackPlacement(servConf);
         MutableObject<Auditor> auditorRef = new MutableObject<Auditor>();
@@ -274,7 +272,7 @@ public class AuditorPlacementPolicyCheckTest extends BookKeeperClusterTestCase {
                 .build();
         lm.createLedgerMetadata(2L, initMeta).get();
 
-        ServerConfiguration servConf = new ServerConfiguration(bsConfs.get(0));
+        ServerConfiguration servConf = new ServerConfiguration(confByIndex(0));
         servConf.setMinNumRacksPerWriteQuorum(minNumRacksPerWriteQuorumConfValue);
         setServerConfigPropertiesForRackPlacement(servConf);
         MutableObject<Auditor> auditorRef = new MutableObject<Auditor>();
@@ -410,7 +408,7 @@ public class AuditorPlacementPolicyCheckTest extends BookKeeperClusterTestCase {
             Thread.sleep(5000);
         }
 
-        ServerConfiguration servConf = new ServerConfiguration(bsConfs.get(0));
+        ServerConfiguration servConf = new ServerConfiguration(confByIndex(0));
         servConf.setUnderreplicatedLedgerRecoveryGracePeriod(underreplicatedLedgerRecoveryGracePeriod);
         setServerConfigPropertiesForRackPlacement(servConf);
         MutableObject<Auditor> auditorRef = new MutableObject<Auditor>();
@@ -511,7 +509,7 @@ public class AuditorPlacementPolicyCheckTest extends BookKeeperClusterTestCase {
         lm.createLedgerMetadata(2L, initMeta).get();
         numOfLedgersNotAdheringToPlacementPolicy++;
 
-        ServerConfiguration servConf = new ServerConfiguration(bsConfs.get(0));
+        ServerConfiguration servConf = new ServerConfiguration(confByIndex(0));
         servConf.setMinNumRacksPerWriteQuorum(minNumRacksPerWriteQuorumConfValue);
         setServerConfigPropertiesForRackPlacement(servConf);
         MutableObject<Auditor> auditorRef = new MutableObject<Auditor>();
@@ -557,7 +555,7 @@ public class AuditorPlacementPolicyCheckTest extends BookKeeperClusterTestCase {
         LedgerManagerFactory mFactory = driver.getLedgerManagerFactory();
         LedgerManager lm = mFactory.newLedgerManager();
 
-        ServerConfiguration servConf = new ServerConfiguration(bsConfs.get(0));
+        ServerConfiguration servConf = new ServerConfiguration(confByIndex(0));
         servConf.setDesiredNumZonesPerWriteQuorum(3);
         servConf.setMinNumZonesPerWriteQuorum(2);
         setServerConfigPropertiesForZonePlacement(servConf);
@@ -687,7 +685,7 @@ public class AuditorPlacementPolicyCheckTest extends BookKeeperClusterTestCase {
         TestOpStatsLogger placementPolicyCheckStatsLogger = (TestOpStatsLogger) statsLogger
                 .getOpStatsLogger(ReplicationStats.PLACEMENT_POLICY_CHECK_TIME);
 
-        final TestAuditor auditor = new TestAuditor(Bookie.getBookieId(servConf).toString(), servConf,
+        final TestAuditor auditor = new TestAuditor(BookieImpl.getBookieId(servConf).toString(), servConf,
                 statsLogger);
         auditorRef.setValue(auditor);
         CountDownLatch latch = auditor.getLatch();

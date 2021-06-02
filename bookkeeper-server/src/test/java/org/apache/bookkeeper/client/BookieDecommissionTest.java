@@ -20,11 +20,9 @@ package org.apache.bookkeeper.client;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-
 import java.util.Iterator;
-
 import lombok.extern.slf4j.Slf4j;
-import org.apache.bookkeeper.bookie.Bookie;
+import org.apache.bookkeeper.bookie.BookieImpl;
 import org.apache.bookkeeper.client.BKException.BKIllegalOpException;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.common.testing.annotations.FlakyTest;
@@ -77,7 +75,7 @@ public class BookieDecommissionTest extends BookKeeperClusterTestCase {
              * if we try to call decommissionBookie for a bookie which is not
              * shutdown, then it should throw BKIllegalOpException
              */
-            bkAdmin.decommissionBookie(bs.get(0).getBookieId());
+            bkAdmin.decommissionBookie(addressByIndex(0));
             fail("Expected BKIllegalOpException because that bookie is not shutdown yet");
         } catch (BKIllegalOpException bkioexc) {
             // expected IllegalException
@@ -88,7 +86,7 @@ public class BookieDecommissionTest extends BookKeeperClusterTestCase {
          * this decommisionBookie should make sure that there are no
          * underreplicated ledgers because of this bookie
          */
-        bkAdmin.decommissionBookie(Bookie.getBookieId(killedBookieConf));
+        bkAdmin.decommissionBookie(BookieImpl.getBookieId(killedBookieConf));
         bkAdmin.triggerAudit();
         Thread.sleep(500);
         Iterator<UnderreplicatedLedger> ledgersToRereplicate = urLedgerMgr.listLedgersToRereplicate(null);
@@ -101,7 +99,7 @@ public class BookieDecommissionTest extends BookKeeperClusterTestCase {
         }
 
         killedBookieConf = killBookie(0);
-        bkAdmin.decommissionBookie(Bookie.getBookieId(killedBookieConf));
+        bkAdmin.decommissionBookie(BookieImpl.getBookieId(killedBookieConf));
         bkAdmin.triggerAudit();
         Thread.sleep(500);
         ledgersToRereplicate = urLedgerMgr.listLedgersToRereplicate(null);
@@ -161,7 +159,7 @@ public class BookieDecommissionTest extends BookKeeperClusterTestCase {
          * info. Check BOOKKEEPER-237 and BOOKKEEPER-325. But later
          * ReplicationWorker will fence the ledger.
          */
-        bkAdmin.decommissionBookie(Bookie.getBookieId(killedBookieConf));
+        bkAdmin.decommissionBookie(BookieImpl.getBookieId(killedBookieConf));
         bkAdmin.triggerAudit();
         Thread.sleep(500);
         Iterator<UnderreplicatedLedger> ledgersToRereplicate = urLedgerMgr.listLedgersToRereplicate(null);

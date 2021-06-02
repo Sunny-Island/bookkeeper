@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.bookkeeper.auth.AuthProviderFactoryFactory;
 import org.apache.bookkeeper.auth.ClientAuthProvider;
 import org.apache.bookkeeper.bookie.Bookie;
+import org.apache.bookkeeper.bookie.BookieImpl;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.common.util.OrderedExecutor;
 import org.apache.bookkeeper.conf.ClientConfiguration;
@@ -236,7 +237,7 @@ public class TestPerChannelBookieClient extends BookKeeperClusterTestCase {
     public void testRequestCompletesAfterDisconnectRace() throws Exception {
         ServerConfiguration conf = killBookie(0);
 
-        Bookie delayBookie = new Bookie(conf) {
+        Bookie delayBookie = new BookieImpl(conf) {
             @Override
             public ByteBuf readEntry(long ledgerId, long entryId)
                     throws IOException, NoLedgerException {
@@ -249,8 +250,7 @@ public class TestPerChannelBookieClient extends BookKeeperClusterTestCase {
                 return super.readEntry(ledgerId, entryId);
             }
         };
-        bsConfs.add(conf);
-        bs.add(startBookie(conf, delayBookie));
+        startAndAddBookie(conf, delayBookie);
 
         EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
         final OrderedExecutor executor = getOrderedSafeExecutor();

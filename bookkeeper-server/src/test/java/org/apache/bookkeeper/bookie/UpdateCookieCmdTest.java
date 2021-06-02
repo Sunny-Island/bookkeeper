@@ -102,8 +102,8 @@ public class UpdateCookieCmdTest extends BookKeeperClusterTestCase {
         updateCookie("-b", "ip", false);
 
         // start bookie to ensure everything works fine
-        ServerConfiguration conf = bsConfs.get(0);
-        BookieServer restartBookie = startBookie(conf);
+        ServerConfiguration conf = confByIndex(0);
+        BookieServer restartBookie = startAndAddBookie(conf).getServer();
         restartBookie.shutdown();
     }
 
@@ -113,7 +113,7 @@ public class UpdateCookieCmdTest extends BookKeeperClusterTestCase {
     @Test
     public void testUpdateCookieWithInvalidOption() throws Exception {
         String[] argv = new String[] { "updatecookie", "-b", "invalidBookieID" };
-        final ServerConfiguration conf = bsConfs.get(0);
+        final ServerConfiguration conf = confByIndex(0);
         updateCookie(argv, -1, conf);
 
         argv = new String[] { "updatecookie", "-b" };
@@ -143,13 +143,15 @@ public class UpdateCookieCmdTest extends BookKeeperClusterTestCase {
         updateCookie("-b", "hostname", true);
 
         // creates cookie with ipaddress
-        ServerConfiguration conf = bsConfs.get(0);
+        ServerConfiguration conf = confByIndex(0);
         conf.setUseHostNameAsBookieID(true); // sets to hostname
         Cookie cookie = Cookie.readFromRegistrationManager(rm, conf).getValue();
         Cookie.Builder cookieBuilder = Cookie.newBuilder(cookie);
         conf.setUseHostNameAsBookieID(false); // sets to hostname
-        final String newBookieHost = Bookie.getBookieAddress(conf).toString();
+
+        final String newBookieHost = BookieImpl.getBookieAddress(conf).toString();
         cookieBuilder.setBookieId(newBookieHost);
+
         cookieBuilder.build().writeToRegistrationManager(rm, conf, Version.NEW);
         verifyCookieInZooKeeper(conf, 2);
 
@@ -173,19 +175,19 @@ public class UpdateCookieCmdTest extends BookKeeperClusterTestCase {
     @Test
     public void testDuplicateUpdateCookieIpAddress() throws Exception {
         String[] argv = new String[] { "updatecookie", "-b", "ip" };
-        final ServerConfiguration conf = bsConfs.get(0);
+        final ServerConfiguration conf = confByIndex(0);
         conf.setUseHostNameAsBookieID(true);
         updateCookie(argv, -1, conf);
     }
 
     @Test
     public void testWhenNoCookieExists() throws Exception {
-        ServerConfiguration conf = bsConfs.get(0);
-        BookieServer bks = bs.get(0);
+        ServerConfiguration conf = confByIndex(0);
+        BookieServer bks = serverByIndex(0);
         bks.shutdown();
 
         String zkCookiePath = ZKMetadataDriverBase.resolveZkLedgersRootPath(conf)
-            + "/" + COOKIE_NODE + "/" + Bookie.getBookieAddress(conf);
+            + "/" + COOKIE_NODE + "/" + BookieImpl.getBookieAddress(conf);
         Assert.assertNotNull("Cookie path doesn't still exists!", zkc.exists(zkCookiePath, false));
         zkc.delete(zkCookiePath, -1);
         Assert.assertNull("Cookie path still exists!", zkc.exists(zkCookiePath, false));
@@ -211,8 +213,8 @@ public class UpdateCookieCmdTest extends BookKeeperClusterTestCase {
 
     private void updateCookie(String option, String optionVal, boolean useHostNameAsBookieID, boolean useShortHostName)
             throws Exception {
-        ServerConfiguration conf = new ServerConfiguration(bsConfs.get(0));
-        BookieServer bks = bs.get(0);
+        ServerConfiguration conf = new ServerConfiguration(confByIndex(0));
+        BookieServer bks = serverByIndex(0);
         bks.shutdown();
 
         conf.setUseHostNameAsBookieID(!useHostNameAsBookieID);
@@ -237,11 +239,11 @@ public class UpdateCookieCmdTest extends BookKeeperClusterTestCase {
         verifyCookieInZooKeeper(newconf, 1);
 
         for (File journalDir : conf.getJournalDirs()) {
-            journalDir = Bookie.getCurrentDirectory(journalDir);
+            journalDir = BookieImpl.getCurrentDirectory(journalDir);
             Cookie jCookie = Cookie.readFromDirectory(journalDir);
             jCookie.verify(cookie);
         }
-        File[] ledgerDir = Bookie.getCurrentDirectories(conf.getLedgerDirs());
+        File[] ledgerDir = BookieImpl.getCurrentDirectories(conf.getLedgerDirs());
         for (File dir : ledgerDir) {
             Cookie lCookie = Cookie.readFromDirectory(dir);
             lCookie.verify(cookie);
@@ -250,7 +252,7 @@ public class UpdateCookieCmdTest extends BookKeeperClusterTestCase {
 
     private void updateCookie(String[] argv, int exitCode, ServerConfiguration conf) throws KeeperException,
             InterruptedException, IOException, UnknownHostException, Exception {
-        BookieServer bks = bs.get(0);
+        BookieServer bks = serverByIndex(0);
         bks.shutdown();
 
         LOG.info("Perform updatecookie command");

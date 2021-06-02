@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.bookie.BookieException;
+import org.apache.bookkeeper.bookie.BookieImpl;
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
 import org.apache.bookkeeper.client.BookKeeper.DigestType;
 import org.apache.bookkeeper.conf.ClientConfiguration;
@@ -142,8 +143,7 @@ public class LedgerRecoveryTest extends BookKeeperClusterTestCase {
         }
 
         // shutdown first bookie server
-        bs.get(0).shutdown();
-        bs.remove(0);
+        killBookie(0);
 
         /*
          * Try to open ledger.
@@ -188,15 +188,14 @@ public class LedgerRecoveryTest extends BookKeeperClusterTestCase {
         BookieId host = beforelh.getCurrentEnsemble().get(slowBookieIdx);
         ServerConfiguration conf = killBookie(host);
 
-        Bookie fakeBookie = new Bookie(conf) {
+        Bookie fakeBookie = new BookieImpl(conf) {
             @Override
             public void addEntry(ByteBuf entry, boolean ackBeforeSync, WriteCallback cb, Object ctx, byte[] masterKey)
                     throws IOException, BookieException {
                 // drop request to simulate a slow and failed bookie
             }
         };
-        bsConfs.add(conf);
-        bs.add(startBookie(conf, fakeBookie));
+        startAndAddBookie(conf, fakeBookie);
 
         // avoid not-enough-bookies case
         startNewBookie();
@@ -208,9 +207,8 @@ public class LedgerRecoveryTest extends BookKeeperClusterTestCase {
         }
 
         conf = killBookie(host);
-        bsConfs.add(conf);
         // the bookie goes normally
-        bs.add(startBookie(conf));
+        startAndAddBookie(conf);
 
         /*
          * Try to open ledger.
@@ -247,7 +245,7 @@ public class LedgerRecoveryTest extends BookKeeperClusterTestCase {
 
         // Add a dead bookie to the cluster
         ServerConfiguration conf = newServerConfiguration();
-        Bookie deadBookie1 = new Bookie(conf) {
+        Bookie deadBookie1 = new BookieImpl(conf) {
             @Override
             public void recoveryAddEntry(ByteBuf entry, WriteCallback cb, Object ctx, byte[] masterKey)
                     throws IOException, BookieException {
@@ -255,8 +253,7 @@ public class LedgerRecoveryTest extends BookKeeperClusterTestCase {
                 throw new IOException("Couldn't write for some reason");
             }
         };
-        bsConfs.add(conf);
-        bs.add(startBookie(conf, deadBookie1));
+        startAndAddBookie(conf, deadBookie1);
 
         // kill first bookie server
         BookieId bookie1 = lhbefore.getCurrentEnsemble().get(0);
@@ -272,8 +269,7 @@ public class LedgerRecoveryTest extends BookKeeperClusterTestCase {
         }
 
         // restart the first server, kill the second
-        bsConfs.add(conf1);
-        bs.add(startBookie(conf1));
+        startAndAddBookie(conf1);
         BookieId bookie2 = lhbefore.getCurrentEnsemble().get(1);
         ServerConfiguration conf2 = killBookie(bookie2);
 
@@ -297,8 +293,7 @@ public class LedgerRecoveryTest extends BookKeeperClusterTestCase {
         assertTrue("Open call should have completed", openLatch.await(5, TimeUnit.SECONDS));
         assertFalse("Open should not have succeeded", returnCode.get() == BKException.Code.OK);
 
-        bsConfs.add(conf2);
-        bs.add(startBookie(conf2));
+        startAndAddBookie(conf2);
 
         LedgerHandle lhafter = bkc.openLedger(lhbefore.getId(), digestType,
                 "".getBytes());
@@ -328,7 +323,7 @@ public class LedgerRecoveryTest extends BookKeeperClusterTestCase {
 
         // Add a dead bookie to the cluster
         ServerConfiguration conf = newServerConfiguration();
-        Bookie deadBookie1 = new Bookie(conf) {
+        Bookie deadBookie1 = new BookieImpl(conf) {
             @Override
             public void recoveryAddEntry(ByteBuf entry, WriteCallback cb, Object ctx, byte[] masterKey)
                     throws IOException, BookieException {
@@ -336,8 +331,7 @@ public class LedgerRecoveryTest extends BookKeeperClusterTestCase {
                 throw new IOException("Couldn't write for some reason");
             }
         };
-        bsConfs.add(conf);
-        bs.add(startBookie(conf, deadBookie1));
+        startAndAddBookie(conf, deadBookie1);
 
         // kill first bookie server
         BookieId bookie1 = lhbefore.getCurrentEnsemble().get(0);
@@ -411,7 +405,7 @@ public class LedgerRecoveryTest extends BookKeeperClusterTestCase {
     }
 
     private void startDeadBookie(ServerConfiguration conf) throws Exception {
-        Bookie rBookie = new Bookie(conf) {
+        Bookie rBookie = new BookieImpl(conf) {
             @Override
             public void recoveryAddEntry(ByteBuf entry, WriteCallback cb, Object ctx, byte[] masterKey)
                     throws IOException, BookieException {
@@ -419,8 +413,7 @@ public class LedgerRecoveryTest extends BookKeeperClusterTestCase {
                 throw new IOException("Couldn't write entries for some reason");
             }
         };
-        bsConfs.add(conf);
-        bs.add(startBookie(conf, rBookie));
+        startAndAddBookie(conf, rBookie);
     }
 
     @Test

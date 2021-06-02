@@ -154,15 +154,14 @@ public class BookieStorageThresholdTest extends BookKeeperClusterTestCase {
         };
         conf.setLedgerDirNames(ledgerDirNames);
         conf.setJournalDirName(journalDir.getPath());
-        BookieServer server = startBookie(conf);
-        bs.add(server);
-        bsConfs.add(conf);
-        Bookie bookie = server.getBookie();
+
+        BookieServer server = startAndAddBookie(conf).getServer();
+        BookieImpl bookie = (BookieImpl) server.getBookie();
         // since we are going to set dependency injected dirsMonitor, so we need to shutdown
         // the dirsMonitor which was created as part of the initialization of Bookie
         bookie.dirsMonitor.shutdown();
 
-        LedgerDirsManager ledgerDirsManager = bookie.getLedgerDirsManager();
+        LedgerDirsManager ledgerDirsManager = ((BookieImpl) bookie).getLedgerDirsManager();
 
         // flag latches
         final CountDownLatch diskWritable = new CountDownLatch(1);

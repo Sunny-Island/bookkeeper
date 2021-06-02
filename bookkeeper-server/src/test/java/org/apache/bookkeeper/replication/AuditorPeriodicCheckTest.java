@@ -49,6 +49,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.bookie.BookieAccessor;
 import org.apache.bookkeeper.bookie.BookieException;
+import org.apache.bookkeeper.bookie.BookieImpl;
 import org.apache.bookkeeper.bookie.IndexPersistenceMgr;
 import org.apache.bookkeeper.client.AsyncCallback.AddCallback;
 import org.apache.bookkeeper.client.BKException;
@@ -102,10 +103,10 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         super.setUp();
 
         for (int i = 0; i < numBookies; i++) {
-            ServerConfiguration conf = new ServerConfiguration(bsConfs.get(i));
+            ServerConfiguration conf = new ServerConfiguration(confByIndex(i));
             conf.setAuditorPeriodicCheckInterval(CHECK_INTERVAL);
 
-            String addr = bs.get(i).getBookieId().toString();
+            String addr = addressByIndex(i).toString();
 
             AuditorElector auditorElector = new AuditorElector(addr, conf);
             auditorElectors.put(addr, auditorElector);
@@ -114,9 +115,9 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         }
 
         driver = MetadataDrivers.getBookieDriver(
-            URI.create(bsConfs.get(0).getMetadataServiceUri()));
+            URI.create(confByIndex(0).getMetadataServiceUri()));
         driver.initialize(
-            bsConfs.get(0),
+            confByIndex(0),
             () -> {},
             NullStatsLogger.INSTANCE);
     }
@@ -151,11 +152,11 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         }
         lh.close();
 
-        BookieAccessor.forceFlush(bs.get(0).getBookie());
+        BookieAccessor.forceFlush((BookieImpl) serverByIndex(0).getBookie());
 
 
-        File ledgerDir = bsConfs.get(0).getLedgerDirs()[0];
-        ledgerDir = Bookie.getCurrentDirectory(ledgerDir);
+        File ledgerDir = confByIndex(0).getLedgerDirs()[0];
+        ledgerDir = BookieImpl.getCurrentDirectory(ledgerDir);
         // corrupt of entryLogs
         File[] entryLogs = ledgerDir.listFiles(new FilenameFilter() {
                 public boolean accept(File dir, String name) {
@@ -207,10 +208,10 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         }
         lh.close();
 
-        BookieAccessor.forceFlush(bs.get(0).getBookie());
+        BookieAccessor.forceFlush((BookieImpl) serverByIndex(0).getBookie());
 
-        File ledgerDir = bsConfs.get(0).getLedgerDirs()[0];
-        ledgerDir = Bookie.getCurrentDirectory(ledgerDir);
+        File ledgerDir = confByIndex(0).getLedgerDirs()[0];
+        ledgerDir = BookieImpl.getCurrentDirectory(ledgerDir);
 
         // corrupt of entryLogs
         File index = new File(ledgerDir, IndexPersistenceMgr.getLedgerName(ledgerToCorrupt));
@@ -273,7 +274,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         final AtomicInteger numReads = new AtomicInteger(0);
         ServerConfiguration conf = killBookie(0);
 
-        Bookie deadBookie = new Bookie(conf) {
+        Bookie deadBookie = new BookieImpl(conf) {
             @Override
             public ByteBuf readEntry(long ledgerId, long entryId)
                     throws IOException, NoLedgerException {
@@ -282,8 +283,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
                 throw new IOException("Fake I/O exception");
             }
         };
-        bsConfs.add(conf);
-        bs.add(startBookie(conf, deadBookie));
+        startAndAddBookie(conf, deadBookie);
 
         Thread.sleep(CHECK_INTERVAL * 2000);
         assertEquals("Nothing should have tried to read", 0, numReads.get());
@@ -338,8 +338,8 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         }
 
         try (final Auditor auditor = new Auditor(
-                Bookie.getBookieId(bsConfs.get(0)).toString(),
-                bsConfs.get(0), NullStatsLogger.INSTANCE)) {
+                BookieImpl.getBookieId(confByIndex(0)).toString(),
+                confByIndex(0), NullStatsLogger.INSTANCE)) {
             final AtomicBoolean exceptionCaught = new AtomicBoolean(false);
             final CountDownLatch latch = new CountDownLatch(1);
             Thread t = new Thread() {
@@ -385,7 +385,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         LedgerManagerFactory mFactory = driver.getLedgerManagerFactory();
         LedgerUnderreplicationManager urm = mFactory.newLedgerUnderreplicationManager();
 
-        ServerConfiguration servConf = new ServerConfiguration(bsConfs.get(0));
+        ServerConfiguration servConf = new ServerConfiguration(confByIndex(0));
         validateInitialDelayOfCheckAllLedgers(urm, -1, 1000, servConf, bkc);
         validateInitialDelayOfCheckAllLedgers(urm, 999, 1000, servConf, bkc);
         validateInitialDelayOfCheckAllLedgers(urm, 1001, 1000, servConf, bkc);
@@ -401,7 +401,8 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         servConf.setAuditorPeriodicCheckInterval(auditorPeriodicCheckInterval);
         servConf.setAuditorPeriodicPlacementPolicyCheckInterval(0);
         servConf.setAuditorPeriodicBookieCheckInterval(0);
-        final TestAuditor auditor = new TestAuditor(Bookie.getBookieId(servConf).toString(), servConf, bkc, false,
+
+        final TestAuditor auditor = new TestAuditor(BookieImpl.getBookieId(servConf).toString(), servConf, bkc, false,
                 statsLogger);
         CountDownLatch latch = auditor.getLatch();
         assertEquals("CHECK_ALL_LEDGERS_TIME SuccessCount", 0, checkAllLedgersStatsLogger.getSuccessCount());
@@ -478,7 +479,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         LedgerManagerFactory mFactory = driver.getLedgerManagerFactory();
         LedgerUnderreplicationManager urm = mFactory.newLedgerUnderreplicationManager();
 
-        ServerConfiguration servConf = new ServerConfiguration(bsConfs.get(0));
+        ServerConfiguration servConf = new ServerConfiguration(confByIndex(0));
         validateInitialDelayOfPlacementPolicyCheck(urm, -1, 1000, servConf, bkc);
         validateInitialDelayOfPlacementPolicyCheck(urm, 999, 1000, servConf, bkc);
         validateInitialDelayOfPlacementPolicyCheck(urm, 1001, 1000, servConf, bkc);
@@ -494,7 +495,8 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         servConf.setAuditorPeriodicPlacementPolicyCheckInterval(auditorPeriodicPlacementPolicyCheckInterval);
         servConf.setAuditorPeriodicCheckInterval(0);
         servConf.setAuditorPeriodicBookieCheckInterval(0);
-        final TestAuditor auditor = new TestAuditor(Bookie.getBookieId(servConf).toString(), servConf, bkc, false,
+
+        final TestAuditor auditor = new TestAuditor(BookieImpl.getBookieId(servConf).toString(), servConf, bkc, false,
                 statsLogger);
         CountDownLatch latch = auditor.getLatch();
         assertEquals("PLACEMENT_POLICY_CHECK_TIME SuccessCount", 0, placementPolicyCheckStatsLogger.getSuccessCount());
@@ -582,7 +584,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         LedgerManagerFactory mFactory = driver.getLedgerManagerFactory();
         LedgerUnderreplicationManager urm = mFactory.newLedgerUnderreplicationManager();
 
-        ServerConfiguration servConf = new ServerConfiguration(bsConfs.get(0));
+        ServerConfiguration servConf = new ServerConfiguration(confByIndex(0));
         validateInitialDelayOfReplicasCheck(urm, -1, 1000, servConf, bkc);
         validateInitialDelayOfReplicasCheck(urm, 999, 1000, servConf, bkc);
         validateInitialDelayOfReplicasCheck(urm, 1001, 1000, servConf, bkc);
@@ -598,7 +600,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         servConf.setAuditorPeriodicReplicasCheckInterval(auditorPeriodicReplicasCheckInterval);
         servConf.setAuditorPeriodicCheckInterval(0);
         servConf.setAuditorPeriodicBookieCheckInterval(0);
-        final TestAuditor auditor = new TestAuditor(Bookie.getBookieId(servConf).toString(), servConf, bkc, false,
+        final TestAuditor auditor = new TestAuditor(BookieImpl.getBookieId(servConf).toString(), servConf, bkc, false,
                 statsLogger);
         CountDownLatch latch = auditor.getLatch();
         assertEquals("REPLICAS_CHECK_TIME SuccessCount", 0, replicasCheckStatsLogger.getSuccessCount());
@@ -706,17 +708,17 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         // Identify a bookie in the current ledger ensemble to be replaced
         BookieId replacedBookie = null;
         for (int i = 0; i < numBookies; i++) {
-            if (curEnsemble.contains(bs.get(i).getBookieId())) {
+            if (curEnsemble.contains(addressByIndex(i))) {
                 bookieIdx = i;
-                replacedBookie = bs.get(i).getBookieId();
+                replacedBookie = addressByIndex(i);
                 break;
             }
         }
         assertNotEquals("Couldn't find ensemble bookie in bookie list", -1, bookieIdx);
 
-        LOG.info("Killing bookie " + bs.get(bookieIdx).getBookieId());
+        LOG.info("Killing bookie " + addressByIndex(bookieIdx));
         ServerConfiguration conf = killBookie(bookieIdx);
-        Bookie writeFailingBookie = new Bookie(conf) {
+        Bookie writeFailingBookie = new BookieImpl(conf) {
             @Override
             public void addEntry(ByteBuf entry, boolean ackBeforeSync, WriteCallback cb,
                              Object ctx, byte[] masterKey)
@@ -736,8 +738,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
                 }
             }
         };
-        bsConfs.add(conf);
-        bs.add(startBookie(conf, writeFailingBookie));
+        startAndAddBookie(conf, writeFailingBookie);
         return replacedBookie;
     }
 
@@ -781,7 +782,7 @@ public class AuditorPeriodicCheckTest extends BookKeeperClusterTestCase {
         // now start the replication workers
         List<ReplicationWorker> l = new ArrayList<ReplicationWorker>();
         for (int i = 0; i < numBookies; i++) {
-            ReplicationWorker rw = new ReplicationWorker(bsConfs.get(i), NullStatsLogger.INSTANCE);
+            ReplicationWorker rw = new ReplicationWorker(confByIndex(i), NullStatsLogger.INSTANCE);
             rw.start();
             l.add(rw);
         }

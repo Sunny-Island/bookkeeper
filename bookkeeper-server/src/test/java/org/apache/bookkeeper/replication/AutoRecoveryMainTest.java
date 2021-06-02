@@ -22,8 +22,7 @@ package org.apache.bookkeeper.replication;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-
-import org.apache.bookkeeper.bookie.Bookie;
+import org.apache.bookkeeper.bookie.BookieImpl;
 import org.apache.bookkeeper.meta.zk.ZKMetadataClientDriver;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.replication.ReplicationException.UnavailableException;
@@ -46,7 +45,7 @@ public class AutoRecoveryMainTest extends BookKeeperClusterTestCase {
      */
     @Test
     public void testStartup() throws Exception {
-        AutoRecoveryMain main = new AutoRecoveryMain(bsConfs.get(0));
+        AutoRecoveryMain main = new AutoRecoveryMain(confByIndex(0));
         try {
             main.start();
             Thread.sleep(500);
@@ -64,7 +63,7 @@ public class AutoRecoveryMainTest extends BookKeeperClusterTestCase {
      */
     @Test
     public void testShutdown() throws Exception {
-        AutoRecoveryMain main = new AutoRecoveryMain(bsConfs.get(0));
+        AutoRecoveryMain main = new AutoRecoveryMain(confByIndex(0));
         main.start();
         Thread.sleep(500);
         assertTrue("AuditorElector should be running",
@@ -88,9 +87,9 @@ public class AutoRecoveryMainTest extends BookKeeperClusterTestCase {
         /*
          * initialize three AutoRecovery instances.
          */
-        AutoRecoveryMain main1 = new AutoRecoveryMain(bsConfs.get(0));
-        AutoRecoveryMain main2 = new AutoRecoveryMain(bsConfs.get(1));
-        AutoRecoveryMain main3 = new AutoRecoveryMain(bsConfs.get(2));
+        AutoRecoveryMain main1 = new AutoRecoveryMain(confByIndex(0));
+        AutoRecoveryMain main2 = new AutoRecoveryMain(confByIndex(1));
+        AutoRecoveryMain main3 = new AutoRecoveryMain(confByIndex(2));
 
         /*
          * start main1, make sure all the components are started and main1 is
@@ -99,8 +98,9 @@ public class AutoRecoveryMainTest extends BookKeeperClusterTestCase {
         ZKMetadataClientDriver zkMetadataClientDriver1 = startAutoRecoveryMain(main1);
         ZooKeeper zk1 = zkMetadataClientDriver1.getZk();
         Auditor auditor1 = main1.auditorElector.getAuditor();
-        BookieId currentAuditor = AuditorElector.getCurrentAuditor(bsConfs.get(0), zk1);
-        assertTrue("Current Auditor should be AR1", currentAuditor.equals(Bookie.getBookieId(bsConfs.get(0))));
+
+        BookieId currentAuditor = AuditorElector.getCurrentAuditor(confByIndex(0), zk1);
+        assertTrue("Current Auditor should be AR1", currentAuditor.equals(BookieImpl.getBookieId(confByIndex(0))));
         assertTrue("Auditor of AR1 should be running", auditor1.isRunning());
 
         /*
@@ -116,7 +116,7 @@ public class AutoRecoveryMainTest extends BookKeeperClusterTestCase {
          * auditors are not running.
          */
         assertTrue("Current Auditor should still be AR1",
-                currentAuditor.equals(Bookie.getBookieId(bsConfs.get(0))));
+                currentAuditor.equals(BookieImpl.getBookieId(confByIndex(0))));
         Auditor auditor2 = main2.auditorElector.getAuditor();
         Auditor auditor3 = main3.auditorElector.getAuditor();
         assertTrue("AR2's Auditor should not be running", (auditor2 == null || !auditor2.isRunning()));
@@ -153,8 +153,8 @@ public class AutoRecoveryMainTest extends BookKeeperClusterTestCase {
         /*
          * the AR3 should be current auditor.
          */
-        currentAuditor = AuditorElector.getCurrentAuditor(bsConfs.get(2), zk3);
-        assertTrue("Current Auditor should be AR3", currentAuditor.equals(Bookie.getBookieId(bsConfs.get(2))));
+        currentAuditor = AuditorElector.getCurrentAuditor(confByIndex(2), zk3);
+        assertTrue("Current Auditor should be AR3", currentAuditor.equals(BookieImpl.getBookieId(confByIndex(2))));
         auditor3 = main3.auditorElector.getAuditor();
         assertTrue("Auditor of AR3 should be running", auditor3.isRunning());
 

@@ -23,9 +23,7 @@ package org.apache.bookkeeper.client;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-
 import io.netty.buffer.ByteBuf;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
@@ -34,9 +32,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-
 import org.apache.bookkeeper.bookie.Bookie;
 import org.apache.bookkeeper.bookie.BookieException;
+import org.apache.bookkeeper.bookie.BookieImpl;
 import org.apache.bookkeeper.bookie.InterleavedLedgerStorage;
 import org.apache.bookkeeper.bookie.LedgerStorage;
 import org.apache.bookkeeper.bookie.SortedLedgerStorage;
@@ -78,7 +76,7 @@ public class TestReadLastConfirmedAndEntry extends BookKeeperClusterTestCase {
         });
     }
 
-    static class FakeBookie extends Bookie {
+    static class FakeBookie extends BookieImpl {
 
         final long expectedEntryToFail;
         final boolean stallOrRespondNull;
@@ -125,8 +123,7 @@ public class TestReadLastConfirmedAndEntry extends BookKeeperClusterTestCase {
         for (int i = 0; i < numBookies; i++) {
             ServerConfiguration conf = newServerConfiguration();
             Bookie b = new FakeBookie(conf, expectedEntryIdToFail, i != 0);
-            bs.add(startBookie(conf, b));
-            bsConfs.add(conf);
+            startAndAddBookie(conf, b);
         }
 
         // create bookkeeper
@@ -176,7 +173,7 @@ public class TestReadLastConfirmedAndEntry extends BookKeeperClusterTestCase {
         assertEquals(BKException.Code.OK, rcHolder.get());
     }
 
-    static class SlowReadLacBookie extends Bookie {
+    static class SlowReadLacBookie extends BookieImpl {
 
         private final long lacToSlowRead;
         private final CountDownLatch readLatch;
@@ -242,9 +239,7 @@ public class TestReadLastConfirmedAndEntry extends BookKeeperClusterTestCase {
         ServerConfiguration bsConf = killBookie(0);
         // start it with a slow bookie
         Bookie b = new SlowReadLacBookie(bsConf, lacToSlowRead, readLatch);
-        bs.add(startBookie(bsConf, b));
-        bsConfs.add(bsConf);
-
+        startAndAddBookie(bsConf, b);
         // create bookkeeper
         BookKeeper newBk = new BookKeeper(newConf);
         // create ledger
