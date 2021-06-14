@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 
 interface BookieFileChannel {
-    FileChannel getFileChannel();
+    FileChannel getFileChannel() throws IOException;
 
     boolean fileExists(File file);
 
