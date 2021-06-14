@@ -82,6 +82,7 @@ public class PMemChannel extends FileChannel {
     private static int poolSize = 0;
     private static PersistentHeap heap;
     private static volatile boolean inited = false;
+    public static volatile boolean heap_inited = false;
     private static Pool<PersistentMemoryBlock> blockPool = new Pool<>();
     private static AtomicInteger counter = new AtomicInteger();
     private static final Object GLOBAL_LOCK = new Object();
@@ -164,6 +165,25 @@ public class PMemChannel extends FileChannel {
      * @throws IOException
      */
     public static FileChannel open(Path file, long initFileSize, boolean preallocate) throws IOException {
+        if(PMemChannel.heap_inited==false){
+            String pmemDir = file.toString();
+            File directory = new File(pmemDir);
+            if (directory.exists()) {
+                String[] entries = directory.list();
+                for (String s : entries) {
+                    File currentFile = new File(directory.getPath(), s);
+                    currentFile.delete();
+                }
+                directory.delete();
+            }
+            directory.mkdirs();
+
+            String path = pmemDir + "/heap";
+            long size = 1024L * 1024 * 512 * 1;
+            int initSize = 10 * 1024 * 1024;
+            PMemChannel.initHeap(path, size, initSize, 0.9);
+            PMemChannel.heap_inited = true;
+        }
         synchronized (GLOBAL_LOCK) {
             log.info("open PMemChannel " + file.toString());
 
@@ -211,6 +231,7 @@ public class PMemChannel extends FileChannel {
     }
 
     public PMemChannel(Path file, long initSize, boolean preallocate) throws IOException {
+
         filePath = file;
         sizeKey = filePath.toString() + "/size";
 
@@ -282,10 +303,8 @@ public class PMemChannel extends FileChannel {
     }
 
     @Override
-    public int read(ByteBuffer dst) throws UnsupportedOperationException {
-        String msg = "read(ByteBuffer dst) not implemented";
-        log.error(msg);
-        throw new UnsupportedOperationException(msg);
+    public int read(ByteBuffer dst) throws IOException {
+        return read(dst,0);
     }
 
     @Override
@@ -314,15 +333,14 @@ public class PMemChannel extends FileChannel {
             }
         }
 
-        log.debug("write " + writeSize + " to buf from position "
+        log.info("write " + writeSize + " to buf from position "
             + channelPosition + ", size = " + size() + ", src.limit() = "
-                + src.limit() + ", src.position = " + src.position() + ", src.capacity() = " + src.capacity()
-                + ", src.arrayOffset() = " + src.arrayOffset());
-        pBlock.copyFromArray(src.array(), src.arrayOffset() + src.position(), channelPosition, writeSize);
+                + src.limit() + ", src.position = " + src.position() + ", src.capacity() = " + src.capacity());
+        for(int i = 0;i<writeSize;i++){
+            pBlock.setByte(channelPosition++,src.get());
+        }
         // _buf.flush(_position, writeSize);
-        src.position(src.position() + writeSize);
-        channelPosition += writeSize;
-        log.debug("After write, final position = " + channelPosition);
+        log.info("After write, final position = " + channelPosition);
         return writeSize;
     }
 
@@ -410,9 +428,8 @@ public class PMemChannel extends FileChannel {
 
     @Override
     public int write(ByteBuffer src, long position) throws UnsupportedOperationException {
-        String msg = "write(ByteBuffer src, long position) not implemented";
-        log.error(msg);
-        throw new UnsupportedOperationException(msg);
+        return 0;
+
     }
 
     @Override
@@ -476,6 +493,6 @@ public class PMemChannel extends FileChannel {
 
     public static boolean fileExistsInHeap(File file) {
         PersistentLong handleP = ObjectDirectory.get(file.toString(), PersistentLong.class);
-        return handleP == null;
+        return handleP != null;
     }
 }

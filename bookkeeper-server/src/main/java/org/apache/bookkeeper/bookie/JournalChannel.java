@@ -165,6 +165,7 @@ class JournalChannel implements Closeable {
         //TODO: add file channel type to global config
         this.fileChannelType = fileChannelType;
 
+        LOG.info(this.fileChannelType.toString());
         File fn = new File(journalDirectory, Long.toHexString(logId) + ".txn");
 
         if (formatVersionToWrite < V4) {
@@ -186,6 +187,7 @@ class JournalChannel implements Closeable {
                 //TODO: add PMem file size to config
                 long initFileSize = 10L * 1024 * 1024;
                 fc = PMemChannel.open(fn.toPath(), initFileSize, false);
+                LOG.info("Opening a PMEM channel");
             }
 
 
@@ -205,10 +207,11 @@ class JournalChannel implements Closeable {
             nextPrealloc = this.preAllocSize;
             fc.write(zeros, nextPrealloc - journalAlignSize);
         } else {  // open an existing file
-            randomAccessFile = new RandomAccessFile(fn, "r");
             if (this.fileChannelType == FileChannelType.FILE) {
+                randomAccessFile = new RandomAccessFile(fn, "r");
                 fc = openFileChannel(randomAccessFile);
             } else {
+                randomAccessFile = null;
                 //TODO: add PMem file size to config
                 long initFileSize = 10L * 1024 * 1024;
                 fc = PMemChannel.open(fn.toPath(), initFileSize, false);
@@ -262,6 +265,10 @@ class JournalChannel implements Closeable {
             }
         }
         if (fRemoveFromPageCache) {
+            if(this.fileChannelType==FileChannelType.PMEM){
+                fd = -1;
+                return;
+            }
             this.fd = NativeIO.getSysFileDescriptor(randomAccessFile.getFD());
         } else {
             this.fd = -1;

@@ -677,7 +677,7 @@ public class Journal extends BookieCriticalThread implements CheckpointSource {
         this.journalFormatVersionToWrite = conf.getJournalFormatVersionToWrite();
         this.journalAlignmentSize = conf.getJournalAlignmentSize();
         this.journalPageCacheFlushIntervalMSec = conf.getJournalPageCacheFlushIntervalMSec();
-        this.journalStorageDevice = conf.getJournalStorageDevice() == "PMEM"
+        this.journalStorageDevice = conf.getJournalStorageDevice().equals("PMEM")
             ? JournalChannel.FileChannelType.PMEM : JournalChannel.FileChannelType.FILE;
 
         if (conf.getNumJournalCallbackThreads() > 0) {
