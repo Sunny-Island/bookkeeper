@@ -35,17 +35,15 @@ RUN set -x \
     && adduser "${BK_USER}" \
     && yum install -y java-11-openjdk-devel wget bash python3 sudo\
     && mkdir -pv /opt \
+WORKDIR /opt
+COPY bookkeeper-server-4.15.0-SNAPSHOT-bin.tar.gz /opt
+
+RUN set -x \
     && cd /opt \
-    && wget -q "${DISTRO_URL}" \
-    && wget -q "${DISTRO_URL}.asc" \
-    && wget -q "${DISTRO_URL}.sha512" \
-    && sha512sum -c ${DISTRO_NAME}.tar.gz.sha512 \
-    && wget https://dist.apache.org/repos/dist/release/bookkeeper/KEYS \
-    && gpg --import KEYS \
-    && gpg --batch --verify "$DISTRO_NAME.tar.gz.asc" "$DISTRO_NAME.tar.gz" \
-    && tar -xzf "$DISTRO_NAME.tar.gz" \
-    && mv bookkeeper-server-${BK_VERSION}/ /opt/bookkeeper/ \
-    && rm -rf "$DISTRO_NAME.tar.gz" "$DISTRO_NAME.tar.gz.asc" "$DISTRO_NAME.tar.gz.sha512" \
+    && ls \
+    && tar -xzf /opt/bookkeeper-server-4.15.0-SNAPSHOT-bin.tar.gz \
+    && rm /opt/bookkeeper-server-4.15.0-SNAPSHOT-bin.tar.gz \
+    && mv bookkeeper-server-4.15.0-SNAPSHOT/ /opt/bookkeeper/ \
     # install zookeeper shell
     && wget -q https://bootstrap.pypa.io/pip/2.7/get-pip.py \
     && python --version \
