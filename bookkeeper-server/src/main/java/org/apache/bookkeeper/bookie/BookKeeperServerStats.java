@@ -66,6 +66,7 @@ public interface BookKeeperServerStats {
     String GET_BOOKIE_INFO = "GET_BOOKIE_INFO";
     String GET_LIST_OF_ENTRIES_OF_LEDGER = "GET_LIST_OF_ENTRIES_OF_LEDGER";
     String GET_LIST_OF_ENTRIES_OF_LEDGER_REQUEST = "GET_LIST_OF_ENTRIES_OF_LEDGER_REQUEST";
+    String WRITE_CHANNEL_DELAY = "WRITE_CHANNEL_DELAY";
 
     // Ensemble Stats
     String WATCHER_SCOPE = "bookie_watcher";

@@ -1038,8 +1038,9 @@ public class Journal extends BookieCriticalThread implements CheckpointSource {
                                 writePaddingBytes(logFile, paddingBuff, journalAlignmentSize);
                             }
                             journalFlushWatcher.reset().start();
+                            long startReadEntryTime = MathUtils.nowInNano();
                             bc.flush();
-
+                            journalStats.getWriteChannelDelay().registerSuccessfulEvent(MathUtils.elapsedNanos(startReadEntryTime), TimeUnit.NANOSECONDS);
                             for (int i = 0; i < toFlush.size(); i++) {
                                 QueueEntry entry = toFlush.get(i);
                                 if (entry != null && (!syncData || entry.ackBeforeSync)) {

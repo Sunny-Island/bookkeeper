@@ -41,6 +41,7 @@ import static org.apache.bookkeeper.bookie.BookKeeperServerStats.JOURNAL_QUEUE_S
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.JOURNAL_SCOPE;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.JOURNAL_SYNC;
 import static org.apache.bookkeeper.bookie.BookKeeperServerStats.JOURNAL_WRITE_BYTES;
+import static org.apache.bookkeeper.bookie.BookKeeperServerStats.WRITE_CHANNEL_DELAY;
 
 import lombok.Getter;
 import org.apache.bookkeeper.bookie.BookKeeperServerStats;
@@ -162,6 +163,11 @@ public class JournalStats {
         help = "The number of bytes appended to the journal"
     )
     private final Counter journalWriteBytes;
+    @StatsDoc(
+        name = WRITE_CHANNEL_DELAY,
+        help = "The delay of writing to FileChannel"
+    )
+    private final OpStatsLogger writeChannelDelay;
 
     public JournalStats(StatsLogger statsLogger) {
         journalAddEntryStats = statsLogger.getOpStatsLogger(BookKeeperServerStats.JOURNAL_ADD_ENTRY);
@@ -185,6 +191,7 @@ public class JournalStats {
                 statsLogger.getCounter(BookKeeperServerStats.JOURNAL_NUM_FLUSH_MAX_OUTSTANDING_BYTES);
         flushEmptyQueueCounter = statsLogger.getCounter(BookKeeperServerStats.JOURNAL_NUM_FLUSH_EMPTY_QUEUE);
         journalWriteBytes = statsLogger.getCounter(BookKeeperServerStats.JOURNAL_WRITE_BYTES);
+        writeChannelDelay = statsLogger.getOpStatsLogger(BookKeeperServerStats.WRITE_CHANNEL_DELAY);
     }
 
 }
